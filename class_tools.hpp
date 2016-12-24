@@ -1,0 +1,430 @@
+//////////////////////////
+// class_tools.hpp
+//////////////////////////
+// 
+// interface to linear Boltzmann code CLASS
+//
+// Author: Julian Adamek (Université de Genève & Observatoire de Paris)
+//
+// Last modified: November 2016
+//
+//////////////////////////
+
+#ifndef CLASS_TOOLS_HEADER
+#define CLASS_TOOLS_HEADER
+
+#ifdef HAVE_CLASS
+
+#include <gsl/gsl_spline.h>
+
+using namespace std;
+using namespace LATfield2;
+
+//////////////////////////
+// initializeCLASSstructures
+//////////////////////////
+// Description:
+//   initializes CLASS structures containing interpolation tables for various transfer functions
+// 
+// Arguments:
+//   sim               simulation metadata structure
+//   ic                settings for IC generation
+//   cosmo             cosmological parameter structure
+//   class_background  CLASS structure that will contain the background
+//   class_perturbs    CLASS structure that will contain perturbations
+//   class_spectra     CLASS structure that will contain spectra
+//   output_value      CLASS parameter value specifying the output (optional)
+//
+// Returns:
+// 
+//////////////////////////
+
+void initializeCLASSstructures(metadata & sim, icsettings & ic, cosmology & cosmo, background & class_background, perturbs & class_perturbs, spectra & class_spectra, const char * output_value = "dTk, vTk")
+{
+	precision class_precision;
+	thermo class_thermo;
+	transfers class_transfers;
+  	primordial class_primordial;
+	nonlinear class_nonlinear;
+  	lensing class_lensing;
+  	output class_output;
+	file_content class_filecontent;
+	ErrorMsg class_errmsg;
+	char filename[] = "initializeCLASSstructures";
+	char tmp[8 * PARAM_MAX_LENGTH];
+	int i;
+	int num_entries = 16;
+#ifdef CLASS_K_PER_DECADE_FOR_PK
+	int num_pre = 1;
+#else
+	int num_pre = 0;
+#endif
+
+	if (cosmo.num_ncdm > 0) num_entries += 3;
+	if (parallel.isRoot()) num_entries += 7;
+	if ((1.015 * ic.z_ic + 0.01) > 9999.)
+		num_pre += 2;
+	num_entries += num_pre;
+
+	parser_init(&class_filecontent, num_entries, filename, class_errmsg);
+
+	for (i = 0; i < num_entries; i++)
+		class_filecontent.read[i] = _FALSE_;
+
+	sprintf(class_filecontent.name[0], "root");
+	sprintf(class_filecontent.value[0], "%s%s_class", sim.output_path, sim.basename_generic);
+
+	sprintf(class_filecontent.name[1], "k_pivot");
+	sprintf(class_filecontent.value[1], "%e", ic.k_pivot);
+
+	sprintf(class_filecontent.name[2], "A_s");
+	sprintf(class_filecontent.value[2], "%e", ic.A_s);
+
+	sprintf(class_filecontent.name[3], "n_s");
+	sprintf(class_filecontent.value[3], "%f", ic.n_s);
+
+	sprintf(class_filecontent.name[4], "z_pk");
+	if (ic.z_ic > sim.z_in)
+		sprintf(class_filecontent.value[4], "%f, %f, 0", 1.015 * ic.z_ic + 0.01, sim.z_in);
+	else
+		sprintf(class_filecontent.value[4], "%f, 0", 1.015 * ic.z_ic + 0.01);
+
+	sprintf(class_filecontent.name[5], "output");
+	sprintf(class_filecontent.value[5], "%s", output_value);
+
+	sprintf(class_filecontent.name[6], "gauge");
+	sprintf(class_filecontent.value[6], "Newtonian");
+
+	sprintf(class_filecontent.name[7], "P_k_ini type");
+	sprintf(class_filecontent.value[7], "analytic_Pk");
+
+	sprintf(class_filecontent.name[8], "P_k_max_h/Mpc");
+	sprintf(class_filecontent.value[8], "%f", 2. * M_PI * (double) sim.numpts / sim.boxsize);
+
+	sprintf(class_filecontent.name[9], "h");
+	sprintf(class_filecontent.value[9], "%f", cosmo.h);
+
+	sprintf(class_filecontent.name[10], "Omega_cdm");
+	sprintf(class_filecontent.value[10], "%e", cosmo.Omega_cdm);
+
+	sprintf(class_filecontent.name[11], "Omega_b");
+	sprintf(class_filecontent.value[11], "%e", cosmo.Omega_b);
+
+	sprintf(class_filecontent.name[12], "Omega_g");
+	sprintf(class_filecontent.value[12], "%e", cosmo.Omega_g);
+
+	sprintf(class_filecontent.name[13], "Omega_ur");
+	sprintf(class_filecontent.value[13], "%e", cosmo.Omega_ur);
+
+	sprintf(class_filecontent.name[14], "N_ncdm");
+	sprintf(class_filecontent.value[14], "%d", cosmo.num_ncdm);
+
+	sprintf(class_filecontent.name[15], "perturb_sampling_stepsize");
+	sprintf(class_filecontent.value[15], "0.01");
+
+#ifdef CLASS_K_PER_DECADE_FOR_PK
+	sprintf(class_filecontent.name[16], "k_per_decade_for_pk");
+	sprintf(class_filecontent.value[16], "%d", CLASS_K_PER_DECADE_FOR_PK);
+
+	if (num_pre > 1)
+	{
+		sprintf(class_filecontent.name[17], "recfast_z_initial");
+		sprintf(class_filecontent.value[17], "%e", ic.z_ic * 1.02);
+
+		sprintf(class_filecontent.name[18], "recfast_Nz0");
+		sprintf(class_filecontent.value[18], "%d", 2 * (int) ceil(ic.z_ic * 1.02));
+	}
+#else
+	if (num_pre > 0)
+	{
+		sprintf(class_filecontent.name[16], "recfast_z_initial");
+		sprintf(class_filecontent.value[16], "%e", ic.z_ic * 1.02);
+
+		sprintf(class_filecontent.name[17], "recfast_Nz0");
+		sprintf(class_filecontent.value[17], "%d", 2 * (int) ceil(ic.z_ic * 1.02));
+	}
+#endif
+
+	if (parallel.isRoot())
+	{
+		sprintf(class_filecontent.name[16+num_pre], "background_verbose");
+		sprintf(class_filecontent.value[16+num_pre], "1");
+
+		sprintf(class_filecontent.name[17+num_pre], "perturbations_verbose");
+		sprintf(class_filecontent.value[17+num_pre], "1");
+
+		sprintf(class_filecontent.name[18+num_pre], "spectra_verbose");
+		sprintf(class_filecontent.value[18+num_pre], "1");
+
+		sprintf(class_filecontent.name[19+num_pre], "thermodynamics_verbose");
+		sprintf(class_filecontent.value[19+num_pre], "1");
+
+		sprintf(class_filecontent.name[20+num_pre], "transfer_verbose");
+		sprintf(class_filecontent.value[20+num_pre], "1");
+
+		sprintf(class_filecontent.name[21+num_pre], "primordial_verbose");
+		sprintf(class_filecontent.value[21+num_pre], "1");
+
+		sprintf(class_filecontent.name[22+num_pre], "nonlinear_verbose");
+		sprintf(class_filecontent.value[22+num_pre], "1");
+	}
+
+	if (cosmo.num_ncdm > 0)
+	{
+		sprintf(class_filecontent.name[num_entries-3], "m_ncdm");
+		sprintf(class_filecontent.value[num_entries-3], "%f", cosmo.m_ncdm[0]);
+		for (i = 1; i < cosmo.num_ncdm; i++)
+		{
+			sprintf(tmp, "%s, %f", class_filecontent.value[num_entries-3], cosmo.m_ncdm[i]);
+			sprintf(class_filecontent.value[num_entries-3], "%s", tmp);
+		}
+
+		sprintf(class_filecontent.name[num_entries-2], "T_ncdm");
+		sprintf(class_filecontent.value[num_entries-2], "%f", cosmo.T_ncdm[0]);
+		for (i = 1; i < cosmo.num_ncdm; i++)
+		{
+			sprintf(tmp, "%s, %f", class_filecontent.value[num_entries-2], cosmo.T_ncdm[i]);
+			sprintf(class_filecontent.value[num_entries-2], "%s", tmp);
+		}
+
+		sprintf(class_filecontent.name[num_entries-1], "deg_ncdm");
+		sprintf(class_filecontent.value[num_entries-1], "%f", cosmo.deg_ncdm[0]);
+		for (i = 1; i < cosmo.num_ncdm; i++)
+		{
+			sprintf(tmp, "%s, %f", class_filecontent.value[num_entries-1], cosmo.deg_ncdm[i]);
+			sprintf(class_filecontent.value[num_entries-1], "%s", tmp);
+		}
+	}
+
+	COUT << " gevolution is calling CLASS..." << endl << endl;
+
+	if (input_init(&class_filecontent, &class_precision, &class_background, &class_thermo, &class_perturbs, &class_transfers, &class_primordial, &class_spectra, &class_nonlinear, &class_lensing, &class_output, class_errmsg) == _FAILURE_)
+	{
+		COUT << " error: calling input_init from CLASS library failed!" << endl << " following error message was passed: " << class_errmsg << endl;
+		parallel.abortForce();
+	}
+
+	parser_free(&class_filecontent);
+
+	if (background_init(&class_precision, &class_background) == _FAILURE_)
+	{
+		COUT << " error: calling background_init from CLASS library failed!" << endl << " following error message was passed: " << class_background.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (thermodynamics_init(&class_precision, &class_background, &class_thermo) == _FAILURE_)
+	{
+		COUT << " error: calling thermodynamics_init from CLASS library failed!" << endl << " following error message was passed: " << class_thermo.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (perturb_init(&class_precision, &class_background, &class_thermo, &class_perturbs) == _FAILURE_)
+	{
+		COUT << " error: calling perturb_init from CLASS library failed!" << endl << " following error message was passed: " << class_perturbs.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (primordial_init(&class_precision, &class_perturbs, &class_primordial) == _FAILURE_)
+	{
+		COUT << " error: calling primordial_init from CLASS library failed!" << endl << " following error message was passed: " << class_primordial.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (nonlinear_init(&class_precision, &class_background, &class_thermo, &class_perturbs, &class_primordial, &class_nonlinear) == _FAILURE_)
+	{
+		COUT << " error: calling nonlinear_init from CLASS library failed!" << endl << " following error message was passed: " << class_nonlinear.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (transfer_init(&class_precision, &class_background, &class_thermo, &class_perturbs, &class_nonlinear, &class_transfers) == _FAILURE_)
+	{
+		COUT << " error: calling transfer_init from CLASS library failed!" << endl << " following error message was passed: " << class_transfers.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (spectra_init(&class_precision, &class_background, &class_perturbs, &class_primordial, &class_nonlinear, &class_transfers, &class_spectra) == _FAILURE_)
+	{
+		COUT << " error: calling spectra_init from CLASS library failed!" << endl << " following error message was passed: " << class_spectra.error_message << endl;
+		parallel.abortForce();
+	}
+
+	// Now, free unneeded structures
+
+	if (lensing_free(&class_lensing) == _FAILURE_)
+	{
+		COUT << " error: calling lensing_free from CLASS library failed!" << endl << " following error message was passed: " << class_lensing.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (transfer_free(&class_transfers) == _FAILURE_)
+	{
+		COUT << " error: calling transfer_free from CLASS library failed!" << endl << " following error message was passed: " << class_transfers.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (nonlinear_free(&class_nonlinear) == _FAILURE_)
+	{
+		COUT << " error: calling nonlinear_free from CLASS library failed!" << endl << " following error message was passed: " << class_nonlinear.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (primordial_free(&class_primordial) == _FAILURE_)
+	{
+		COUT << " error: calling primordial_free from CLASS library failed!" << endl << " following error message was passed: " << class_primordial.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (thermodynamics_free(&class_thermo) == _FAILURE_)
+	{
+		COUT << " error: calling thermodynamics_free from CLASS library failed!" << endl << " following error message was passed: " << class_thermo.error_message << endl;
+		parallel.abortForce();
+	}
+
+	COUT << endl << " CLASS structures initialized successfully." << endl;
+}
+
+
+//////////////////////////
+// freeCLASSstructures
+//////////////////////////
+// Description:
+//   frees CLASS structures containing interpolation tables for various transfer functions
+// 
+// Arguments:
+//   class_background  CLASS structure that contains the background
+//   class_perturbs    CLASS structure that contains perturbations
+//   class_spectra     CLASS structure that contains spectra
+//
+// Returns:
+// 
+//////////////////////////
+
+void freeCLASSstructures(background & class_background, perturbs & class_perturbs, spectra & class_spectra)
+{
+	if (spectra_free(&class_spectra) == _FAILURE_)
+	{
+		COUT << " error: calling spectra_free from CLASS library failed!" << endl << " following error message was passed: " << class_spectra.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (perturb_free(&class_perturbs) == _FAILURE_)
+	{
+		COUT << " error: calling perturb_free from CLASS library failed!" << endl << " following error message was passed: " << class_perturbs.error_message << endl;
+		parallel.abortForce();
+	}
+
+	if (background_free(&class_background) == _FAILURE_)
+	{
+		COUT << " error: calling background_free from CLASS library failed!" << endl << " following error message was passed: " << class_background.error_message << endl;
+		parallel.abortForce();
+	}
+}
+
+
+//////////////////////////
+// loadTransferFunctions (2)
+//////////////////////////
+// Description:
+//   loads a set of tabulated transfer functions from some precomputed CLASS structures
+// 
+// Arguments:
+//   class_background  CLASS structure that contains the background
+//   class_perturbs    CLASS structure that contains the perturbations
+//   class_spectra     CLASS structure that contains the spectra
+//   tk_delta          will point to the gsl_spline which holds the tabulated
+//                     transfer function for delta (memory will be allocated)
+//   tk_theta          will point to the gsl_spline which holds the tabulated
+//                     transfer function for theta (memory will be allocated)
+//   qname             string containing the name of the component (e.g. "cdm"); if no string is
+//                     specified, the transfer functions for phi and psi are returned instead!
+//   boxsize           comoving box size (in the same units as used in the CLASS output)
+//   z                 redshift at which the transfer functions are to be obtained
+//   h                 conversion factor between 1/Mpc and h/Mpc (theta is in units of 1/Mpc)
+//
+// Returns:
+// 
+//////////////////////////
+
+void loadTransferFunctions(background & class_background, perturbs & class_perturbs, spectra & class_spectra, gsl_spline * & tk_delta, gsl_spline * & tk_theta, const char * qname, const double boxsize, const double z, double h)
+{
+	int cols = 0, dcol = -1, tcol = -1, kcol = -1;
+	double * k;
+	double * tk_d;
+	double * tk_t;
+	double * data;
+	char coltitles[_MAXTITLESTRINGLENGTH_] = {0};
+	char dname[16];
+	char tname[16];
+	char kname[8];
+	char * ptr;
+
+	spectra_output_tk_titles(&class_background, &class_perturbs, class_format, coltitles);
+	if (qname != NULL)
+	{
+		sprintf(dname, "d_%s", qname);
+		sprintf(tname, "t_%s", qname);
+		h /= boxsize;
+    }
+	else
+	{
+		sprintf(dname, "phi");
+		sprintf(tname, "psi");
+		h = 1.;
+	}
+	sprintf(kname, "k");
+
+	ptr = strtok(coltitles, _DELIMITER_);
+	while (ptr != NULL)
+	{
+    	if (strncmp(ptr, dname, strlen(dname)) == 0) dcol = cols;
+		else if (strncmp(ptr, tname, strlen(tname)) == 0) tcol = cols;
+		else if (strncmp(ptr, kname, strlen(kname)) == 0) kcol = cols;
+		cols++;
+    	ptr = strtok(NULL, _DELIMITER_);
+  	}
+
+	if (dcol < 0 || tcol < 0 || kcol < 0)
+	{
+		COUT << " error in loadTransferFunctions (HAVE_CLASS)! Unable to identify requested columns!" << endl;
+		parallel.abortForce();
+	}
+
+	data = (double *) malloc(sizeof(double) * cols * class_spectra.ln_k_size);
+	k = (double *) malloc(sizeof(double) * class_spectra.ln_k_size);
+	tk_d = (double *) malloc(sizeof(double) * class_spectra.ln_k_size);
+	tk_t = (double *) malloc(sizeof(double) * class_spectra.ln_k_size);
+
+	spectra_output_tk_data(&class_background, &class_perturbs, &class_spectra, class_format, z, cols, data);
+
+	for (int i = 0; i < class_spectra.ln_k_size; i++)
+	{
+		k[i] = data[i*cols + kcol] * boxsize;
+		tk_d[i] = data[i*cols + dcol];
+		tk_t[i] = data[i*cols + tcol] / h;
+		if (i > 0)
+		{
+			if (k[i] < k[i-1])
+			{
+				COUT << " error in loadTransferFunctions (HAVE_CLASS)! k-values are not strictly ordered." << endl;
+				parallel.abortForce();
+			}
+		}
+	}
+
+	free(data);
+	
+	tk_delta = gsl_spline_alloc(gsl_interp_cspline, class_spectra.ln_k_size);
+	tk_theta = gsl_spline_alloc(gsl_interp_cspline, class_spectra.ln_k_size);
+	
+	gsl_spline_init(tk_delta, k, tk_d, class_spectra.ln_k_size);
+	gsl_spline_init(tk_theta, k, tk_t, class_spectra.ln_k_size);
+	
+	free(k);
+	free(tk_d);
+	free(tk_t);
+}
+
+#endif
+
+#endif
+
