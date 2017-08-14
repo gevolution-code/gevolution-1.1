@@ -6,7 +6,7 @@
 //
 // Author: Julian Adamek (Université de Genève & Observatoire de Paris)
 //
-// Last modified: November 2016
+// Last modified: March 2017
 //
 //////////////////////////
 
@@ -55,118 +55,108 @@ void initializeCLASSstructures(metadata & sim, icsettings & ic, cosmology & cosm
 	int i;
 	int num_entries = 16;
 #ifdef CLASS_K_PER_DECADE_FOR_PK
-	int num_pre = 1;
-#else
-	int num_pre = 0;
+	num_entries += 1;
 #endif
 
 	if (cosmo.num_ncdm > 0) num_entries += 3;
 	if (parallel.isRoot()) num_entries += 7;
 	if ((1.015 * ic.z_ic + 0.01) > 9999.)
-		num_pre += 2;
-	num_entries += num_pre;
+		num_entries += 2;
 
 	parser_init(&class_filecontent, num_entries, filename, class_errmsg);
 
 	for (i = 0; i < num_entries; i++)
 		class_filecontent.read[i] = _FALSE_;
+		
+	i = 0;
 
-	sprintf(class_filecontent.name[0], "root");
-	sprintf(class_filecontent.value[0], "%s%s_class", sim.output_path, sim.basename_generic);
+	sprintf(class_filecontent.name[i], "root");
+	sprintf(class_filecontent.value[i++], "%s%s_class", sim.output_path, sim.basename_generic);
 
-	sprintf(class_filecontent.name[1], "k_pivot");
-	sprintf(class_filecontent.value[1], "%e", ic.k_pivot);
+	sprintf(class_filecontent.name[i], "k_pivot");
+	sprintf(class_filecontent.value[i++], "%e", ic.k_pivot);
 
-	sprintf(class_filecontent.name[2], "A_s");
-	sprintf(class_filecontent.value[2], "%e", ic.A_s);
+	sprintf(class_filecontent.name[i], "A_s");
+	sprintf(class_filecontent.value[i++], "%e", ic.A_s);
 
-	sprintf(class_filecontent.name[3], "n_s");
-	sprintf(class_filecontent.value[3], "%f", ic.n_s);
+	sprintf(class_filecontent.name[i], "n_s");
+	sprintf(class_filecontent.value[i++], "%f", ic.n_s);
 
-	sprintf(class_filecontent.name[4], "z_pk");
+	sprintf(class_filecontent.name[i], "z_pk");
 	if (ic.z_ic > sim.z_in)
-		sprintf(class_filecontent.value[4], "%f, %f, 0", 1.015 * ic.z_ic + 0.01, sim.z_in);
+		sprintf(class_filecontent.value[i++], "%f, %f, 0", 1.015 * ic.z_ic + 0.01, sim.z_in);
 	else
-		sprintf(class_filecontent.value[4], "%f, 0", 1.015 * ic.z_ic + 0.01);
+		sprintf(class_filecontent.value[i++], "%f, 0", 1.015 * ic.z_ic + 0.01);
 
-	sprintf(class_filecontent.name[5], "output");
-	sprintf(class_filecontent.value[5], "%s", output_value);
+	sprintf(class_filecontent.name[i], "output");
+	sprintf(class_filecontent.value[i++], "%s", output_value);
 
-	sprintf(class_filecontent.name[6], "gauge");
-	sprintf(class_filecontent.value[6], "Newtonian");
+	sprintf(class_filecontent.name[i], "gauge");
+	sprintf(class_filecontent.value[i++], "Newtonian");
 
-	sprintf(class_filecontent.name[7], "P_k_ini type");
-	sprintf(class_filecontent.value[7], "analytic_Pk");
+	sprintf(class_filecontent.name[i], "P_k_ini type");
+	sprintf(class_filecontent.value[i++], "analytic_Pk");
 
-	sprintf(class_filecontent.name[8], "P_k_max_h/Mpc");
-	sprintf(class_filecontent.value[8], "%f", 2. * M_PI * (double) sim.numpts / sim.boxsize);
+	sprintf(class_filecontent.name[i], "P_k_max_h/Mpc");
+	sprintf(class_filecontent.value[i++], "%f", 2. * M_PI * (double) sim.numpts / sim.boxsize);
 
-	sprintf(class_filecontent.name[9], "h");
-	sprintf(class_filecontent.value[9], "%f", cosmo.h);
+	sprintf(class_filecontent.name[i], "h");
+	sprintf(class_filecontent.value[i++], "%f", cosmo.h);
 
-	sprintf(class_filecontent.name[10], "Omega_cdm");
-	sprintf(class_filecontent.value[10], "%e", cosmo.Omega_cdm);
+	sprintf(class_filecontent.name[i], "Omega_cdm");
+	sprintf(class_filecontent.value[i++], "%e", cosmo.Omega_cdm);
 
-	sprintf(class_filecontent.name[11], "Omega_b");
-	sprintf(class_filecontent.value[11], "%e", cosmo.Omega_b);
+	sprintf(class_filecontent.name[i], "Omega_b");
+	sprintf(class_filecontent.value[i++], "%e", cosmo.Omega_b);
 
-	sprintf(class_filecontent.name[12], "Omega_g");
-	sprintf(class_filecontent.value[12], "%e", cosmo.Omega_g);
+	sprintf(class_filecontent.name[i], "Omega_g");
+	sprintf(class_filecontent.value[i++], "%e", cosmo.Omega_g);
 
-	sprintf(class_filecontent.name[13], "Omega_ur");
-	sprintf(class_filecontent.value[13], "%e", cosmo.Omega_ur);
+	sprintf(class_filecontent.name[i], "Omega_ur");
+	sprintf(class_filecontent.value[i++], "%e", cosmo.Omega_ur);
 
-	sprintf(class_filecontent.name[14], "N_ncdm");
-	sprintf(class_filecontent.value[14], "%d", cosmo.num_ncdm);
+	sprintf(class_filecontent.name[i], "N_ncdm");
+	sprintf(class_filecontent.value[i++], "%d", cosmo.num_ncdm);
 
-	sprintf(class_filecontent.name[15], "perturb_sampling_stepsize");
-	sprintf(class_filecontent.value[15], "0.01");
+	sprintf(class_filecontent.name[i], "perturb_sampling_stepsize");
+	sprintf(class_filecontent.value[i++], "0.01");
 
 #ifdef CLASS_K_PER_DECADE_FOR_PK
-	sprintf(class_filecontent.name[16], "k_per_decade_for_pk");
-	sprintf(class_filecontent.value[16], "%d", CLASS_K_PER_DECADE_FOR_PK);
-
-	if (num_pre > 1)
-	{
-		sprintf(class_filecontent.name[17], "recfast_z_initial");
-		sprintf(class_filecontent.value[17], "%e", ic.z_ic * 1.02);
-
-		sprintf(class_filecontent.name[18], "recfast_Nz0");
-		sprintf(class_filecontent.value[18], "%d", 2 * (int) ceil(ic.z_ic * 1.02));
-	}
-#else
-	if (num_pre > 0)
-	{
-		sprintf(class_filecontent.name[16], "recfast_z_initial");
-		sprintf(class_filecontent.value[16], "%e", ic.z_ic * 1.02);
-
-		sprintf(class_filecontent.name[17], "recfast_Nz0");
-		sprintf(class_filecontent.value[17], "%d", 2 * (int) ceil(ic.z_ic * 1.02));
-	}
+	sprintf(class_filecontent.name[i], "k_per_decade_for_pk");
+	sprintf(class_filecontent.value[i++], "%d", CLASS_K_PER_DECADE_FOR_PK);
 #endif
+
+	if ((1.015 * ic.z_ic + 0.01) > 9999.)
+	{
+		sprintf(class_filecontent.name[i], "recfast_z_initial");
+		sprintf(class_filecontent.value[i++], "%e", ic.z_ic * 1.02);
+
+		sprintf(class_filecontent.name[i], "recfast_Nz0");
+		sprintf(class_filecontent.value[i++], "%d", 2 * (int) ceil(ic.z_ic * 1.02));
+	}
 
 	if (parallel.isRoot())
 	{
-		sprintf(class_filecontent.name[16+num_pre], "background_verbose");
-		sprintf(class_filecontent.value[16+num_pre], "1");
+		sprintf(class_filecontent.name[i], "background_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[17+num_pre], "perturbations_verbose");
-		sprintf(class_filecontent.value[17+num_pre], "1");
+		sprintf(class_filecontent.name[i], "perturbations_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[18+num_pre], "spectra_verbose");
-		sprintf(class_filecontent.value[18+num_pre], "1");
+		sprintf(class_filecontent.name[i], "spectra_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[19+num_pre], "thermodynamics_verbose");
-		sprintf(class_filecontent.value[19+num_pre], "1");
+		sprintf(class_filecontent.name[i], "thermodynamics_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[20+num_pre], "transfer_verbose");
-		sprintf(class_filecontent.value[20+num_pre], "1");
+		sprintf(class_filecontent.name[i], "transfer_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[21+num_pre], "primordial_verbose");
-		sprintf(class_filecontent.value[21+num_pre], "1");
+		sprintf(class_filecontent.name[i], "primordial_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 
-		sprintf(class_filecontent.name[22+num_pre], "nonlinear_verbose");
-		sprintf(class_filecontent.value[22+num_pre], "1");
+		sprintf(class_filecontent.name[i], "nonlinear_verbose");
+		sprintf(class_filecontent.value[i++], "1");
 	}
 
 	if (cosmo.num_ncdm > 0)
