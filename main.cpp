@@ -28,7 +28,7 @@
 //
 // Author: Julian Adamek (Université de Genève & Observatoire de Paris)
 //
-// Last modified: December 2016
+// Last modified: February 2017
 //
 //////////////////////////
 
@@ -839,14 +839,14 @@ int main(int argc, char **argv)
 	}
 	
 	COUT << COLORTEXT_GREEN << " simulation complete." << COLORTEXT_RESET << endl;
-	
-#ifdef BENCHMARK
-	run_time = MPI_Wtime() - start_time;
 
 #ifdef HAVE_CLASS
 	if (sim.radiation_flag > 0)
 		freeCLASSstructures(class_background, class_perturbs, class_spectra);
 #endif
+
+#ifdef BENCHMARK
+	run_time = MPI_Wtime() - start_time;
 
 	parallel.sum(run_time);
 	parallel.sum(cycle_time);
