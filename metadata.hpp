@@ -116,12 +116,12 @@
 #define COLORTEXT_YELLOW    "\033[33;1m"
 #define COLORTEXT_RESET     "\033[0m"
 #else
-#define COLORTEXT_WHITE     '\0'
-#define COLORTEXT_CYAN      '\0'
-#define COLORTEXT_GREEN     '\0'
-#define COLORTEXT_RED       '\0'
-#define COLORTEXT_YELLOW    '\0'
-#define COLORTEXT_RESET     '\0'
+#define COLORTEXT_WHITE     ""
+#define COLORTEXT_CYAN      ""
+#define COLORTEXT_GREEN     ""
+#define COLORTEXT_RED       ""
+#define COLORTEXT_YELLOW    ""
+#define COLORTEXT_RESET     ""
 #endif
 
 // header structure for GADGET-2 files [V. Springel, N. Yoshida, and S.D. White, New Astron. 6 (2001) 79
