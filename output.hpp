@@ -4,9 +4,9 @@
 // 
 // Output of snapshots and spectra
 //
-// Author: Julian Adamek (Université de Genève & Observatoire de Paris)
+// Author: Julian Adamek (Université de Genève & Observatoire de Paris & Queen Mary University of London)
 //
-// Last modified: December 2016
+// Last modified: March 2019
 //
 //////////////////////////
 
@@ -313,6 +313,7 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 		hdr.redshift = (1./a) - 1.;
 				
 		hdr.npart[1] = (unsigned int) (sim.numpcl[0] / sim.tracer_factor[0]);
+		if (sim.numpcl[0] % sim.tracer_factor[0]) hdr.npart[1]++;
 		hdr.npartTotal[1] = hdr.npart[1];
 		if (sim.baryon_flag)
 			hdr.mass[1] = (double) sim.tracer_factor[0] * C_RHO_CRIT * cosmo.Omega_cdm * sim.boxsize * sim.boxsize * sim.boxsize / sim.numpcl[0] / GADGET_MASS_CONVERSION;
@@ -323,6 +324,7 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 		if (sim.baryon_flag)
 		{
 			hdr.npart[1] = (unsigned int) (sim.numpcl[1] / sim.tracer_factor[1]);
+			if (sim.numpcl[1] % sim.tracer_factor[1]) hdr.npart[1]++;
 			hdr.npartTotal[1] = hdr.npart[1];
 			hdr.mass[1] = (double) sim.tracer_factor[1] * C_RHO_CRIT * cosmo.Omega_b * sim.boxsize * sim.boxsize * sim.boxsize / sim.numpcl[1] / GADGET_MASS_CONVERSION;
 			pcls_b->saveGadget2(h5filename + filename + "_b", hdr, sim.tracer_factor[1]);
@@ -331,6 +333,7 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 		{
 			sprintf(buffer, "_ncdm%d", i);
 			hdr.npart[1] = (unsigned int) (sim.numpcl[i+1+sim.baryon_flag] / sim.tracer_factor[i+1+sim.baryon_flag]);
+			if (sim.numpcl[i+1+sim.baryon_flag] % sim.tracer_factor[i+1+sim.baryon_flag]) hdr.npart[1]++;
 			hdr.npartTotal[1] = hdr.npart[1];
 			hdr.mass[1] = (double) sim.tracer_factor[i+1+sim.baryon_flag] * C_RHO_CRIT * cosmo.Omega_ncdm[i] * sim.boxsize * sim.boxsize * sim.boxsize / sim.numpcl[i+1+sim.baryon_flag] / GADGET_MASS_CONVERSION;
 			pcls_ncdm[i].saveGadget2(h5filename + filename + buffer, hdr, sim.tracer_factor[i+1+sim.baryon_flag]);
